@@ -1,3 +1,4 @@
+import os
 import time
 
 from fastapi import FastAPI
@@ -9,12 +10,15 @@ import numpy as np
 import uuid
 from scipy import stats
 
+DEBUG = os.environ['DEBUG'] if os.environ['DEBUG'] else True
+
 config = {
-    "DEBUG": True,
+    "DEBUG": DEBUG,
     "CACHE_TYPE": "SimpleCache",
     "CACHE_DEFAULT_TIMEOUT": 3600  # one hour
 }
 app = FastAPI(
+    debug=DEBUG,
     title='LinReg API',
     description='An amazing API for some OP linear regression',
     version='0.0.1',
