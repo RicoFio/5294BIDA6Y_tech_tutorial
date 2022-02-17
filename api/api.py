@@ -2,6 +2,7 @@ import os
 import time
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import List, Dict
 import diskcache as dc
@@ -17,6 +18,7 @@ config = {
     "CACHE_TYPE": "SimpleCache",
     "CACHE_DEFAULT_TIMEOUT": 3600  # one hour
 }
+
 app = FastAPI(
     debug=DEBUG,
     title='LinReg API',
@@ -24,6 +26,20 @@ app = FastAPI(
     version='0.0.1',
     docs_url='/',
 )
+
+origins = [
+    "http://localhost:8000",
+    "http://0.0.0.0:8000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 cache = dc.Cache('tmp')
 
 
