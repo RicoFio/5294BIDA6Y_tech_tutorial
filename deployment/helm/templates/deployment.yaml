@@ -1,5 +1,5 @@
-apiVersion: apps/v1
 kind: Deployment
+apiVersion: apps/v1
 metadata:
   name: linreg-api-deployment
   labels:
@@ -7,22 +7,23 @@ metadata:
 spec:
   selector:
     matchLabels:
-      app: system
+      app: linreg-api
+  replicas: {{ .Values.deployment.replicas }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
-        app: system
+        app: linreg-api
     spec:
       containers:
-      - name: system-container
-        image: system:1.0-SNAPSHOT
-        ports:
-        - containerPort: 9080
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 9080
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 3
-          failureThreshold: 1
+        - name: linreg-api
+          image: purefr0st/linreg-api:0.0.1
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DEBUG
+              value: 1
