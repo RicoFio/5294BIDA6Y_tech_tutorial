@@ -57,7 +57,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-cache = dc.Cache('tmp')
+cache = dc.FanoutCache('tmp')
 #####################
 
 WORKERS = int(os.getenv("WORKERS", 1))
@@ -75,7 +75,10 @@ class LinRegLocks:
         self.lock.acquire()
 
     def __exit__(self, *args, **kwargs):
-        self.lock.release()
+        try:
+            self.lock.release()
+        except:
+            pass
 
     def _get_lock(self):
         while self._all_locked():
@@ -176,11 +179,11 @@ def linear_fit(points_to_fit: DataToFit,
 
 
 @app.post("/predict/{model_id}", status_code=status.HTTP_200_OK)
-def predict(points_to_fit: DataToPredict, model_id: str):
+def predict(points_to_predict: DataToPredict, model_id: str):
     """
     The endpoint to predict the ys for the given xs given the
     previously fitted model
-    :param points_to_fit:
+    :param points_to_predict:
     :param model_id:
     :return:
     """
@@ -189,7 +192,7 @@ def predict(points_to_fit: DataToPredict, model_id: str):
         return {'error': f'model_id {model_id} not found in cache. please fit your model first'}, 404
     else:
         # Make predictions
-        predictions = model['intercept'] + model['slope'] * np.array(points_to_fit.xs)
+        predictions = model['intercept'] + model['slope'] * np.array(points_to_predict.xs)
         response = {'ys': list(predictions)}
 
         return response
