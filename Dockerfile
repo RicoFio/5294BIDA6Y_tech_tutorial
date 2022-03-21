@@ -1,6 +1,7 @@
 FROM python:3.8-slim AS linreg-api
 WORKDIR /app
 COPY ./api .
+
 RUN apt-get update && \
   apt-get install -y --no-install-recommends gcc python3-dev libssl-dev stress && \
   pip install -r requirements.txt --no-cache-dir && \
