@@ -46,7 +46,9 @@ spec:
               mountPath: /app/tmp
       volumes:
         - name: shared-data
-          emptyDir: { }
+          hostPath:
+            path: /tmp_linreg
+            type: DirectoryOrCreate
 ---
 # The following definition creates an NGINX ingress service
 # and routes all traffic to the linreg-api service
