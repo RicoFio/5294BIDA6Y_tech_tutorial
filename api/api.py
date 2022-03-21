@@ -1,5 +1,20 @@
+### IMPORTS ###
 import os
 import time
+from typing import (
+    List,
+    Dict,
+    Union,
+)
+import threading
+import uuid
+
+import numpy as np
+from pydantic import (
+    BaseModel,
+    validator,
+    Field,
+)
 
 from fastapi import (
     FastAPI,
@@ -7,19 +22,12 @@ from fastapi import (
     status,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import (
-    BaseModel,
-    validator,
-    Field,
-)
-from typing import List, Dict
+
 import diskcache as dc
-import numpy as np
-import threading
 from stressypy import create_job
+###############
 
-import uuid
-
+### FastAPI setup ###
 DEBUG = os.environ['DEBUG'] if os.environ['DEBUG'] else True
 
 config = {
@@ -50,11 +58,16 @@ app.add_middleware(
 )
 
 cache = dc.Cache('tmp')
+#####################
 
 WORKERS = int(os.getenv("WORKERS", 1))
 
 
 class LinRegLocks:
+    """
+    A commodity class taking care to limit the number of concurrent
+    operations to the number of workers available to the server
+    """
     locks = {f'worker_{i}': threading.Lock() for i in range(WORKERS)}
 
     def __enter__(self):
@@ -80,6 +93,11 @@ linreg_lock = LinRegLocks()
 
 
 class DataToFit(BaseModel):
+    """
+    Pydantic definition of the data users can
+    input to generate a fit together with
+    the required validation
+    """
     xs: List[float] = Field(example=[1, 2, 3])
     ys: List[float] = Field(example=[1, 2, 3])
 
@@ -97,26 +115,38 @@ class DataToFit(BaseModel):
 
 
 class DataFittedModel(BaseModel):
+    """Pydantic definition of the fitted model"""
     model_id: int
     model: Dict
 
 
 class DataToPredict(BaseModel):
+    """
+    Pydantic definition of the data users can provide for inference
+    """
     xs: List[float]
 
 
-def linreg(x: np.array, y: np.array):
+def linreg(x: np.array, y: np.array) -> Dict[str, float]:
+    """
+    The actual workhorse
+    :returns
+        dict with fitted slope and intercept
+    """
     A = np.vstack([x, np.ones(len(x))]).T
     slope, intercept = np.linalg.lstsq(A, y, rcond=None)[0]
     return {'slope': slope, 'intercept': intercept}
 
 
 @app.post("/fit", status_code=status.HTTP_201_CREATED)
-def linear_fit(points_to_fit: DataToFit, response: Response):
-    # Check if xs and ys are of equal length
-    if len(points_to_fit.xs) != len(points_to_fit.ys):
-        return {'error': 'xs and ys need to be equal in length'}, 403
-
+def linear_fit(points_to_fit: DataToFit,
+               response: Response) -> Union[Dict[str, Union[str, Dict[str, float]]], Response]:
+    """
+    The endpoint to fit a line to a set of datapoints
+    :param points_to_fit:
+    :param response:
+    :return:
+    """
     # First check if all locks are already used up
     # If that's the case return 429
     if linreg_lock._all_locked():
@@ -147,6 +177,13 @@ def linear_fit(points_to_fit: DataToFit, response: Response):
 
 @app.post("/predict/{model_id}", status_code=status.HTTP_200_OK)
 def predict(points_to_fit: DataToPredict, model_id: str):
+    """
+    The endpoint to predict the ys for the given xs given the
+    previously fitted model
+    :param points_to_fit:
+    :param model_id:
+    :return:
+    """
     # Check if model has been fitted before
     if not (model := cache.get(model_id)):
         return {'error': f'model_id {model_id} not found in cache. please fit your model first'}, 404
