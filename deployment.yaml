@@ -34,6 +34,12 @@ spec:
               value: "1"
             - name: WORKERS
               value: "1"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/tmp
+      volumes:
+        - name: shared-data
+          emptyDir: { }
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
