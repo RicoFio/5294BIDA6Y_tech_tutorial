@@ -1,0 +1,87 @@
+### Big Data - Kubernetes Tech Tutorial
+# This defines the actual linreg-api deployment
+# It defines how many replicas of the linreg-api pod we require
+# as well as the strategies for updating it and the volume
+# the pods share.
+# We here can control the number of workers available for training through
+# the `WORKERS` environment variable
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: linreg-api-deployment
+  labels:
+    app: linreg-api
+spec:
+  selector:
+    matchLabels:
+      app: linreg-api
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: linreg-api
+    spec:
+      containers:
+        - name: linreg-api
+          image: purefr0st/linreg-api:0.0.1
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              cpu: 50m
+            requests:
+              cpu: 20m
+          env:
+            - name: DEBUG
+              value: "1"
+            - name: WORKERS
+              value: "1"
+          volumeMounts:
+            - name: shared-data
+              mountPath: /app/tmp
+      volumes:
+        - name: shared-data
+          emptyDir: { }
+---
+# The following definition creates an NGINX ingress service
+# and routes all traffic to the linreg-api service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: linreg-api-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+    - host: linreg-api
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: linreg-api-service
+                port:
+                  number: 8000
+---
+# This service definition indicates the port our
+# linreg-api expects traffic on and creates a networking
+# interface between the actual container and the remainder
+# of the kubernetes cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: linreg-api-service
+spec:
+  type: NodePort
+  selector:
+    app: linreg-api
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000

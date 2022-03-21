@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Cache
+*/cache.*
+
+
+# Ignore DevSpace cache and log folder
+.devspace/
+
+# Ignore Jetbrains info
+.idea
